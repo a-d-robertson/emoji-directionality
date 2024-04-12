@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Emoji Language Study</title>
+
+
+		<!-- jsPsych stuff -->
+		<script src="jspsych/dist/jspsych.js"></script>
+		<script src="jspsych/dist/plugin-preload.js"></script>
+		<script src="jspsych/dist/plugin-free-sort_custom.js"></script>
+		<script src="jspsych/dist/plugin-html-button-response.js"></script>
+		<script src="jspsych/dist/plugin-html-keyboard-response.js"></script>
+		<script src="jspsych/dist/plugin-survey-text_custom.js"></script>
+		<script src="jspsych/dist/plugin-instructions.js"></script>
+
+		<!-- text vars -->
+		<script src="text_vars.js"></script>
+		<!-- trial vars -->
+		<script src='vars.js'></script>
+		<!-- <script src='trial_vars.js'></script> -->
+
+		<link rel="stylesheet" href="jspsych/dist/jspsych.css" />
+
+	</head>
+
+	<body></body>
+
+</html>
+
+ <!-- Firebase stuff  -->
+<script type="module">
+	import { initializeApp } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-app.js";
+	import { getDatabase, set, ref } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-database.js";
+	import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-auth.js";
+
+	// Your web app's Firebase configuration
+	const firebaseConfig = {
+		apiKey: "1",
+		authDomain: "2",
+		projectId: "3",
+		storageBucket: "4",
+		messagingSenderId: "5",
+		appId: "6",
+		databaseURL: "7",
+	};
+
+	const fb_app = initializeApp(firebaseConfig);
+	const fb_db = getDatabase(fb_app);
+
+	const auth = getAuth();
+	signInAnonymously(auth).then(
+		() => {}).catch(
+		(error) => {console.log(error.code);
+					console.log(error.message)
+					}
+						);
+
+
+
+
+// Hello jsPsych
+var jsPsych = initJsPsych({
+	on_finish: function() {
+		// var PID = jsPsych.data.getURLVariable('PROLIFIC_PID');
+
+		// jsPsych.data.displayData();
+
+		// console.log(jsPsych.data.get().csv());
+
+		// set(ref(fb_db, PID), {data: jsPsych.data.get().values()});
+
+		setTimeout("window.location.href = 'https://app.prolific.co/submissions/complete?cc=CPVMDX3S';",250);
+
+
+	},
+	show_progress_bar: true,
+	auto_update_progress_bar: false,
+
+});
+
+// Shuffle the trials
+const shuffle = (array) => {
+    array.reverse().forEach((item, index) => {
+        const j = Math.floor(Math.random() * (index + 1));
+        [array[index], array[j]] = [array[j], array[index]];
+    });
+
+    return array;
+};
+
+
+var trial_data_shuffled = shuffle(trial_data);
+
+var timeline = [];
+
+var consent = {
+	type: jsPsychSurveyText,
+	preamble: consent_text, // from text_vars.js
+	questions: [{prompt: 'If you consent and wish to continue, please confirm your Prolific ID below and click "I agree".',
+				 rows: 1, columns: 50, required: true,
+				 placeholder: jsPsych.data.getURLVariable('PROLIFIC_PID'),
+				 name: 'PID',
+				}],
+	button_label: 'I agree',
+
+	on_finish: function (data) {
+		// console.log(data);
+		jsPsych.data.addProperties({PID: data.response.PID});
+	},
+	};
+
+// console.log(jsPsych.data.responses);
+
+var instructions = {
+	type: jsPsychInstructions,
+	pages: instruction_pages, // from text_vars.js
+	show_clickable_nav: true,
+
+};
+
+var trials = {
+		type: jsPsychFreeSort,
+		timeline_variables: trial_data_shuffled,
+		stimuli: jsPsych.timelineVariable('stimuli'),
+		prompt: jsPsych.timelineVariable('prompt'),
+		sort_area_shape: "square",
+		prompt_location: "below",
+		// stim_height: 80,
+		// stim_width: 80,
+		sort_area_width: 300,
+		sort_area_height: 120,
+		stim_starts_inside: false,
+		randomize_order: true,
+		post_trial_gap: 750,
+		counter_text_unfinished: "You need to use 2 emoji",
+		counter_text_finished : "If you are happy with your translation, click Continue",
+		column_spread_factor: 1.2,
+
+		data: {condition: jsPsych.timelineVariable('condition'),
+			   text: jsPsych.timelineVariable('prompt'),
+			   stimuli: jsPsych.timelineVariable('stimuli'),
+			   // trial_id: jsPsych.timelineVariable('trial_id'),
+				},
+
+	    on_finish: function (data) {
+	                      // data.PROLIFIC_ID = jsPsych.data.getURLVariable('PROLIFIC_PID');
+	                      set(ref(fb_db, data.PID), {data: jsPsych.data.get().values()});
+	                      var prog = jsPsych.getProgressBarCompleted();
+	                      jsPsych.setProgressBar(prog + 0.0166);
+	                     },
+        };
+
+var test_procedure = {
+  timeline: [trials],
+  timeline_variables: trial_data_shuffled,
+}
+
+
+timeline.push(consent);
+timeline.push(instructions);
+
+timeline.push(test_procedure);
+
+
+jsPsych.run(timeline);
+
+
+
+
+
+
+</script>
+
